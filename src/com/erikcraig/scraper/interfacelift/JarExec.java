@@ -85,11 +85,14 @@ public class JarExec {
     
     @Option(name="-res",usage="Image resolution to download",metaVar="RES")
     private String RESOLUTION = "3840x2160";
+    
+    @Option(name="-f",usage="Perform full update. Does not quit as soon as the first already existing image is found.")
+    private boolean fullUpdate;
 
     @Option(name="-n",usage="Number of recent images to download.")
     private int NUMBER_TO_DOWNLOAD = 100;
     
-    @Option(name="-help",usage="Display usage.",help=true)
+    @Option(name="-h",usage="Display usage.",help=true)
     private boolean isHelp;
     
     @Argument
@@ -141,14 +144,19 @@ public class JarExec {
 			int totalSaved = 0;
 			int i = 0;
 			while (i < (numberOfPages + 1)){
-				totalSaved+=doScrape(i);
-				i++;
+				int saved = doScrape(i);
+				if (saved == -1){
+					break;
+				}
+				else{
+					totalSaved+=saved;
+					i++;
+				}
 			}
 			System.out.println("Downloaded images: "+totalSaved);
 			System.out.println("Skipped images: "+(NUMBER_TO_DOWNLOAD - totalSaved));
 			
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -171,7 +179,6 @@ public class JarExec {
 		        StringWriter writer = new StringWriter();
 		        IOUtils.copy(instream, writer);
 		        theHtml = writer.toString();
-//		        System.out.println(theHtml);
 		    }
 		} finally {
 		    response.close();
@@ -238,7 +245,11 @@ public class JarExec {
 		        File f = new File(thisFilePath);
 		        if(f.exists()) { 
 		        	System.out.println("Already created "+thisFilePath+" - skipping");
-		            continue;
+		        	//if running in fullUpdate mode - continue looking for missing jpgs, otherwise quit the update.
+		        	if (fullUpdate)
+		        		continue;
+		        	else
+		        		return -1;
 		        }
 				
 				
