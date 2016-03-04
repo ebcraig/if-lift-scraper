@@ -138,11 +138,14 @@ public class JarExec {
 	        }
 	        
 			int numberOfPages = NUMBER_TO_DOWNLOAD / 10; //10 per-page today
+			int totalSaved = 0;
 			int i = 0;
 			while (i < (numberOfPages + 1)){
-				doScrape(i);
+				totalSaved+=doScrape(i);
 				i++;
 			}
+			System.out.println("Downloaded images: "+totalSaved);
+			System.out.println("Skipped images: "+(NUMBER_TO_DOWNLOAD - totalSaved));
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -151,9 +154,11 @@ public class JarExec {
 		
 	}
 
-	void doScrape(int index) throws UnsupportedOperationException, IOException{
+	int doScrape(int index) throws UnsupportedOperationException, IOException{
 		String theHtml = null;
 		String theJs = null;
+		int saved = 0;
+		
 		CloseableHttpClient httpclient = HttpClients.createDefault();
 		HttpGet httpget = new HttpGet(HTMLPGBASEURL+"index"+index+".html");
 		httpget.setHeader(HttpHeaders.USER_AGENT, USER_AGENT);
@@ -175,20 +180,17 @@ public class JarExec {
 		//Drop out if HTML does not read
 		if (Strings.isNullOrEmpty(theHtml)){
 			System.out.println("Couldn't read index.html for "+HTMLPGBASEURL);
-			return;
+			return saved;
 		}
 		
 		
 		
 		Pattern p = Pattern.compile(previewUrlExtractionPattern);
 	    Matcher m = p.matcher(theHtml); // get a matcher object
-	    int count = 0;
 	    
 	    List<ImageObjectID> foundImages = Lists.newArrayList();
 	    
 	    while(m.find()) {
-		    count++;
-		    
 		    foundImages.add(new ImageObjectID(m.group(1), m.group(2), m.group(0)));
 	    }
 
@@ -210,25 +212,24 @@ public class JarExec {
 		//Drop out if HTML does not read
 		if (Strings.isNullOrEmpty(theJs)){
 			System.out.println("Couldn't read index.html for "+JSURL);
-			return;
+			return saved;
 		}
 		
 		p = Pattern.compile(jsUrlExtractionPattern);
 	    m = p.matcher(theJs); // get a matcher object
-	    count = 0;
 	    String pathId = null;
 	    
 	    while(m.find()) {
-		    count++;
 	    	pathId = m.group(1);
 	    }
 	    httpclient.close();
 	    
 		if (Strings.isNullOrEmpty(pathId)){
 			System.out.println("path ID could not be found!");
-			return;
+			return saved;
 		}else{
 			//do full retrieval here
+			
 			for (ImageObjectID thisEntry : foundImages){
 				
 				
@@ -261,6 +262,7 @@ public class JarExec {
 				        output.close();
 				    }
 				    System.out.println("Wrote file to: "+thisFilePath);
+				    saved++;
 				} finally {
 				}
 				response.close();
@@ -269,7 +271,7 @@ public class JarExec {
 			
 			
 		}
-		
+		return saved;
 		
 	}
 	
